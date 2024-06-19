@@ -1,0 +1,282 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import sqlite3
+
+# Funcion para crear la base de datos y la tabla
+def crear_base_de_datos():
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+    
+    # Eliminar la tabla de celulares si ya existe
+    c.execute('''
+    DROP TABLE IF EXISTS celulares
+    ''')
+    
+    # Crear la tabla de celulares
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS celulares (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT,
+        precio_min INTEGER,
+        precio_max INTEGER,
+        fotografia BOOLEAN,
+        redes_sociales BOOLEAN,
+        productividad BOOLEAN,
+        multimedia BOOLEAN,
+        almacenamiento BOOLEAN,
+        sistema_operativo TEXT,
+        bateria INTEGER
+    )
+    ''')
+    
+    # Guardar los cambios y cerrar la conexion
+    conn.commit()
+    conn.close()
+
+# Funcion para poblar la tabla con datos
+def poblar_base_de_datos():
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    # Lista de celulares con sus caracteristicas
+    celulares = [
+        ("iPhone 14 Pro Max", 19000, 30000, 1, 1, 1, 1, 1, "iOS", 4352),
+        ("Samsung Galaxy S23 Ultra", 19000, 30000, 1, 1, 1, 1, 1, "Android", 5000),
+        ("iPhone 13 Pro", 15000, 19000, 1, 1, 1, 1, 1, "iOS", 3095),
+        ("Samsung Galaxy S21", 15000, 19000, 1, 1, 1, 1, 1, "Android", 4000),
+        ("Google Pixel 6", 10000, 15000, 1, 1, 1, 1, 1, "Android", 4614),
+        ("Samsung Galaxy A52", 10000, 15000, 1, 1, 1, 1, 1, "Android", 4500),
+        ("Xiaomi Mi 11 Lite", 7000, 10000, 1, 1, 1, 1, 1, "Android", 4250),
+        ("iPhone SE", 7000, 10000, 1, 1, 1, 1, 1, "iOS", 1821),
+        ("Xiaomi Redmi Note 10", 5000, 7000, 1, 1, 1, 1, 1, "Android", 5000),
+        ("Samsung Galaxy A12", 5000, 7000, 1, 1, 1, 1, 1, "Android", 5000),
+        ("Samsung Galaxy A02", 2000, 5000, 1, 1, 1, 1, 1, "Android", 5000),
+        ("Xiaomi Redmi 9A", 2000, 5000, 1, 1, 1, 1, 1, "Android", 5000)
+    ]
+
+    # Insertar datos en la tabla
+    c.executemany('''
+    INSERT INTO celulares (nombre, precio_min, precio_max, fotografia, redes_sociales, productividad, multimedia, almacenamiento, sistema_operativo, bateria)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', celulares)
+
+    # Guardar los cambios y cerrar la conexion
+    conn.commit()
+    conn.close()
+
+# Funcion para obtener los celulares disponibles segun los IDs
+def obtener_celulares(ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    if not ids:
+        return []
+
+    query = f"SELECT * FROM celulares WHERE id IN ({','.join(['?'] * len(ids))})"
+    c.execute(query, ids)
+    resultados = c.fetchall()
+
+    conn.close()
+    return resultados
+
+# Funcion para filtrar celulares por presupuesto
+def filtrar_por_presupuesto(presupuesto, ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    min_presupuesto, max_presupuesto = {
+        "Mas de $19,000": (19000, 30000),
+        "15,000 - $19,000": (15000, 19000),
+        "10,000 - $15,000": (10000, 15000),
+        "7,000 - $10,000": (7000, 10000),
+        "5,000 - $7,000": (5000, 7000),
+        "2,000 - $5,000": (2000, 5000)
+    }[presupuesto]
+
+    query = f"SELECT id FROM celulares WHERE id IN ({','.join(['?'] * len(ids))}) AND precio_min <= ? AND precio_max >= ?"
+    c.execute(query, ids + [max_presupuesto, min_presupuesto])
+    resultados = c.fetchall()
+
+    conn.close()
+    return [r[0] for r in resultados]
+
+# Funcion para filtrar celulares por actividad
+def filtrar_por_actividad(actividad, valor, ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    columna = {
+        "Tomar fotos": "fotografia",
+        "Creador en redes sociales": "redes_sociales",
+        "Productividad": "productividad"
+    }[actividad]
+
+    query = f"SELECT id FROM celulares WHERE id IN ({','.join(['?'] * len(ids))}) AND {columna} >= ?"
+    c.execute(query, ids + [valor])
+    resultados = c.fetchall()
+
+    conn.close()
+    return [r[0] for r in resultados]
+
+# Funcion para filtrar celulares por multimedia
+def filtrar_por_multimedia(consumo_multimedia, ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    valor = 1 if consumo_multimedia == "Bastante" else 0
+
+    query = f"SELECT id FROM celulares WHERE id IN ({','.join(['?'] * len(ids))}) AND multimedia >= ?"
+    c.execute(query, ids + [valor])
+    resultados = c.fetchall()
+
+    conn.close()
+    return [r[0] for r in resultados]
+
+# Funcion para filtrar celulares por almacenamiento
+def filtrar_por_almacenamiento(almacenamiento, ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    valor = 1 if almacenamiento == "Si" else 0
+
+    query = f"SELECT id FROM celulares WHERE id IN ({','.join(['?'] * len(ids))}) AND almacenamiento >= ?"
+    c.execute(query, ids + [valor])
+    resultados = c.fetchall()
+
+    conn.close()
+    return [r[0] for r in resultados]
+
+# Funcion para filtrar celulares por sistema operativo
+def filtrar_por_sistema_operativo(sistema_operativo, ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    query = f"SELECT id FROM celulares WHERE id IN ({','.join(['?'] * len(ids))}) AND sistema_operativo = ?"
+    c.execute(query, ids + [sistema_operativo])
+    resultados = c.fetchall()
+
+    conn.close()
+    return [r[0] for r in resultados]
+
+# Funcion para filtrar celulares por bateria
+def filtrar_por_bateria(bateria, ids):
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+
+    min_bateria, max_bateria = {
+        "2000-3000": (2000, 3000),
+        "3000-4000": (3000, 4000),
+        "4000-5000": (4000, 5000),
+        "5000+": (5000, 999999)
+    }[bateria]
+
+    query = f"SELECT id FROM celulares WHERE id IN ({','.join(['?'] * len(ids))}) AND bateria >= ? AND bateria <= ?"
+    c.execute(query, ids + [min_bateria, max_bateria])
+    resultados = c.fetchall()
+
+    conn.close()
+    return [r[0] for r in resultados]
+
+# Funcion para mostrar las recomendaciones en una ventana emergente
+def mostrar_recomendaciones():
+    # Obtener todos los IDs de celulares
+    conn = sqlite3.connect('celulares.db')
+    c = conn.cursor()
+    c.execute("SELECT id, nombre FROM celulares")
+    todos_los_celulares = c.fetchall()
+    conn.close()
+
+    # Filtrar celulares por cada criterio
+    presupuesto = presupuesto_var.get()
+    ids_filtrados = filtrar_por_presupuesto(presupuesto, [c[0] for c in todos_los_celulares])
+
+    # Filtrar por actividad de tomar fotos si está seleccionado
+    if fotografia_var.get():
+        ids_filtrados = filtrar_por_actividad("Tomar fotos", 1, ids_filtrados)
+
+    # Filtrar por actividad de creador en redes sociales si está seleccionado
+    if redes_sociales_var.get():
+        ids_filtrados = filtrar_por_actividad("Creador en redes sociales", 1, ids_filtrados)
+
+    # Filtrar por actividad de productividad si está seleccionado
+    if productividad_var.get():
+        ids_filtrados = filtrar_por_actividad("Productividad", 1, ids_filtrados)
+
+    consumo_multimedia = consumo_multimedia_var.get()
+    ids_filtrados = filtrar_por_multimedia(consumo_multimedia, ids_filtrados)
+
+    almacenamiento = almacenamiento_var.get()
+    ids_filtrados = filtrar_por_almacenamiento(almacenamiento, ids_filtrados)
+
+    sistema_operativo = sistema_operativo_var.get()
+    ids_filtrados = filtrar_por_sistema_operativo(sistema_operativo, ids_filtrados)
+
+    bateria = bateria_var.get()
+    ids_filtrados = filtrar_por_bateria(bateria, ids_filtrados)
+
+    # Obtener los nombres de los celulares filtrados
+    resultados = obtener_celulares(ids_filtrados)
+
+    if resultados:
+        ventana_recomendacion = tk.Toplevel()
+        ventana_recomendacion.title("Recomendaciones")
+
+        for celular in resultados:
+            nombre = celular[1]
+            label_nombre = tk.Label(ventana_recomendacion, text=f"Nombre: {nombre}")
+            label_nombre.pack()
+    else:
+        messagebox.showinfo("Recomendaciones", "No se encontraron celulares que coincidan con tus criterios.")
+
+# Crear la base de datos y poblarla
+crear_base_de_datos()
+poblar_base_de_datos()
+
+# Crear la ventana principal
+root = tk.Tk()
+root.title("Recomendador de Celulares")
+
+# Variables
+presupuesto_var = tk.StringVar(value="10,000 - $15,000")
+fotografia_var = tk.BooleanVar()
+redes_sociales_var = tk.BooleanVar()
+productividad_var = tk.BooleanVar()
+consumo_multimedia_var = tk.StringVar(value="Bastante")
+almacenamiento_var = tk.StringVar(value="Si")
+sistema_operativo_var = tk.StringVar(value="Android")
+bateria_var = tk.StringVar(value="4000-5000")
+
+# Widgets
+ttk.Label(root, text="Presupuesto:").grid(column=0, row=0, sticky=tk.W, padx=10, pady=5)
+presupuesto_combobox = ttk.Combobox(root, textvariable=presupuesto_var, values=[
+    "Mas de $19,000", "15,000 - $19,000", "10,000 - $15,000",
+    "7,000 - $10,000", "5,000 - $7,000", "2,000 - $5,000"
+])
+presupuesto_combobox.grid(column=1, row=0, padx=10, pady=5)
+
+ttk.Label(root, text="Actividades:").grid(column=0, row=1, sticky=tk.W, padx=10, pady=5)
+tk.Checkbutton(root, text="Tomar fotos", variable=fotografia_var).grid(column=1, row=1, sticky=tk.W, padx=10, pady=5)
+tk.Checkbutton(root, text="Creador en redes sociales", variable=redes_sociales_var).grid(column=2, row=1, sticky=tk.W, padx=10, pady=5)
+tk.Checkbutton(root, text="Productividad", variable=productividad_var).grid(column=3, row=1, sticky=tk.W, padx=10, pady=5)
+
+ttk.Label(root, text="Frecuencia de consumo multimedia:").grid(column=0, row=2, sticky=tk.W, padx=10, pady=5)
+consumo_multimedia_combobox = ttk.Combobox(root, textvariable=consumo_multimedia_var, values=["Casi nunca", "Poco", "Bastante"])
+consumo_multimedia_combobox.grid(column=1, row=2, padx=10, pady=5)
+
+ttk.Label(root, text="Almacenas muchas fotos y archivos:").grid(column=0, row=3, sticky=tk.W, padx=10, pady=5)
+almacenamiento_combobox = ttk.Combobox(root, textvariable=almacenamiento_var, values=["Si", "No"])
+almacenamiento_combobox.grid(column=1, row=3, padx=10, pady=5)
+
+ttk.Label(root, text="Sistema Operativo:").grid(column=0, row=4, sticky=tk.W, padx=10, pady=5)
+sistema_operativo_combobox = ttk.Combobox(root, textvariable=sistema_operativo_var, values=["Android", "iOS"])
+sistema_operativo_combobox.grid(column=1, row=4, padx=10, pady=5)
+
+ttk.Label(root, text="Tamaño de la batería (mAh):").grid(column=0, row=5, sticky=tk.W, padx=10, pady=5)
+bateria_combobox = ttk.Combobox(root, textvariable=bateria_var, values=["2000-3000", "3000-4000", "4000-5000", "5000+"])
+bateria_combobox.grid(column=1, row=5, padx=10, pady=5)
+
+# Boton para mostrar recomendaciones
+ttk.Button(root, text="Mostrar Recomendaciones", command=mostrar_recomendaciones).grid(column=0, row=6, columnspan=4, pady=20)
+
+# Ejecutar la aplicacion
+root.mainloop()
